@@ -1,8 +1,11 @@
 import {
   Body,
+  ConflictException,
   Controller,
   Delete,
   Get,
+  HttpCode,
+  NotFoundException,
   Param,
   Post,
   Put,
@@ -18,22 +21,58 @@ export class TasksController {
 
   @Get()
   async findAll(): Promise<Task[]> {
-    return this.tasksService.findAll();
+    try {
+      const resp = await this.tasksService.findAll();
+      return resp;
+    } catch (error) {
+      if (error.code == 11000) {
+        throw new Error('Duplicate key error');
+      }
+
+      if (error.code == 400) {
+        throw new Error('Bad request');
+      }
+
+      if (error.code == 404) {
+        throw new Error('Not found');
+      }
+    }
   }
 
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<Task> {
-    return this.tasksService.findOne(id);
+    try {
+      const rep = await this.tasksService.findOne(id);
+      if (rep == null) {
+        throw new Error('Not found');
+      }
+      return rep;
+    } catch (error) {
+      throw new ConflictException(error.message);
+    }
   }
 
   @Post()
   async create(@Body() task: CreateTaskDto): Promise<Task> {
-    return this.tasksService.create(task);
+    try {
+      return await this.tasksService.create(task);
+    } catch (error) {
+      throw new ConflictException(error.message);
+    }
   }
 
   @Delete(':id')
+  @HttpCode(204)
   async delete(@Param('id') id: string): Promise<Task> {
-    return this.tasksService.delete(id);
+    try {
+      const resp = await this.tasksService.delete(id);
+      if (resp == null) {
+        throw new NotFoundException('Not found');
+      }
+      return resp;
+    } catch (error) {
+      throw new ConflictException(error.message);
+    }
   }
 
   @Put(':id')
@@ -41,6 +80,14 @@ export class TasksController {
     @Param('id') id: string,
     @Body() task: UpdateTaskDto,
   ): Promise<Task> {
-    return this.tasksService.update(id, task);
+    try {
+      const resp = await this.tasksService.update(id, task);
+      if (resp == null) {
+        throw new NotFoundException('Not found');
+      }
+      return resp;
+    } catch (error) {
+      throw new ConflictException(error.message);
+    }
   }
 }
